@@ -17,6 +17,7 @@
  */
 
 import 'babel-polyfill';
+import * as Stats from 'stats.js';
 import {MobileNet} from './mobilenet';
 import {camera, VIDEO_PIXELS} from './camera';
 import {VIEWS, ui, GAME_STRINGS} from './ui';
@@ -126,6 +127,7 @@ export class Game {
   gameIsPaused = false;
   firstRun = true;
   firstSpeak = true;
+  stats: Stats;
 
   constructor() {
     this.emojiScavengerMobileNet = new MobileNet();
@@ -349,6 +351,11 @@ export class Game {
     // Only do predictions if the game is running, ensures performant view
     // transitions and saves battery life when the game isn't in running mode.
     if (this.isRunning) {
+
+      if(this.debugMode) {
+        this.stats.begin();
+      }
+
       // Run the tensorflow predict logic inside a tfc.tidy call which helps
       // to clean up memory from tensorflow calls once they are done.
       const result = tfc.tidy(() => {
@@ -391,6 +398,10 @@ export class Game {
       }
     }
 
+    if(this.debugMode) {
+      this.stats.end();
+    }
+
     // To ensure better page responsiveness we call our predict function via
     // requestAnimationFrame - see goo.gl/1d9cJa
     requestAnimationFrame(() => this.predict());
@@ -402,6 +413,14 @@ export class Game {
    */
   initGame() {
     if (this.firstRun) {
+
+      if(this.debugMode) {
+        this.stats = new Stats();
+        this.stats.dom.style.position = 'relative';
+        this.stats.showPanel(0);
+        ui.cameraFPSEl.appendChild(this.stats.dom);
+      }
+
       ui.showView(VIEWS.LOADING);
       Promise.all([
         this.emojiScavengerMobileNet.load().then(() => this.warmUpModel()),
